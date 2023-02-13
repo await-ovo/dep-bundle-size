@@ -21,7 +21,7 @@ export const ERROR_MESSAGES = {
   }) =>
     `Request ${specifier} failed.\n         code: ${code}.\n         message: ${message}`,
   [ErrorType.NoPackagesError]: () =>
-    'No Packages to scan, the packages to be scanned can be specified in the following way:\n1. dependencies in package.json 2. set packages manually, e.g. dep-bundle-size react react-dom',
+    'No Packages to scan, the packages to be scanned can be specified in the these ways:\n1. dependencies in package.json\n2. set packages manually, e.g. dep-bundle-size react react-dom',
   [ErrorType.RecursiveWithInteractiveError]: () =>
     'Can not use --recursive(-r) and packages --interactive(-i) at the same time',
 };

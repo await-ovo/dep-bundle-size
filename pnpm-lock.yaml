@@ -19,6 +19,7 @@ specifiers:
   fast-glob: ^3.2.12
   got: ^12.5.3
   js-yaml: ^4.1.0
+  kolorist: ^1.7.0
   ora: ^6.1.2
   p-limit: ^4.0.0
   prettier: ^2.7.1
@@ -32,6 +33,7 @@ dependencies:
   fast-glob: 3.2.12
   got: 12.5.3
   js-yaml: 4.1.0
+  kolorist: 1.7.0
   ora: 6.1.2
   p-limit: 4.0.0
   table: 6.8.1
@@ -1818,6 +1820,10 @@ packages:
     resolution: {integrity: sha512-5MHbFaKn8cNSmVW7BYnijeAVlE4cYA/SVkifVgrh7yotnfhKmjuXpDKjrABLnT0SfHWV21P8ow07OGfRrNDg8g==}
     dependencies:
       json-buffer: 3.0.1
+    dev: false
+
+  /kolorist/1.7.0:
+    resolution: {integrity: sha512-ymToLHqL02udwVdbkowNpzjFd6UzozMtshPQKVi5k1EjKRqKqBrOnE9QbLEb0/pV76SAiIT13hdL8R6suc+f3g==}
     dev: false
 
   /levn/0.4.1:

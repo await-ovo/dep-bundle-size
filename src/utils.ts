@@ -4,22 +4,54 @@ import { got, HTTPError } from 'got';
 import pLimit from 'p-limit';
 import yaml from 'js-yaml';
 import glob from 'fast-glob';
-import { BUNDLE_PHOBIA_API, ErrorType } from './constants';
+import { BUNDLE_PHOBIA_API, ErrorType, NPM_REGISTRY } from './constants';
+
+const limit = pLimit(6);
+
+export type Project = {
+  name?: string;
+  path: string;
+};
+
+export type PackageStatsResponse = {
+  assets: {
+    gzip: number;
+    name: string;
+    size: number;
+    type: string;
+  }[];
+  dependencyCount: number;
+  dependencySizes: {
+    approximateSize: number;
+    name: string;
+  }[];
+  description: string;
+  gzip: number;
+  hasJSModule: string;
+  hasJSNext: string;
+  hasSideEffects: string[];
+  name: string;
+  isModuleType: boolean;
+  repository: string;
+  scoped: boolean;
+  size: number;
+  version: string;
+};
 
 export const logger = {
   log: (...args: any[]) => {
-    process.stdout.write('[INFO]: ');
+    process.stdout.write('\nINFO: ');
     // eslint-disable-next-line no-console
     console.log('[INFO]: ', ...args);
   },
 
   error: (...args: any[]) => {
-    process.stdout.write('[ERROR]: ');
+    process.stderr.write('\nERROR: ');
     // eslint-disable-next-line no-console
     console.error(...args);
   },
   warn: (...args: any[]) => {
-    process.stdout.write('[WARN]: ');
+    process.stdout.write('\nWARN: ');
     // eslint-disable-next-line no-console
     console.warn(...args);
   },
@@ -49,16 +81,13 @@ export const detectPackageManager = (dir: string) => {
   return 'npm';
 };
 
-export const findRootDirectory = () => {};
-
-export const getWorkspacePackages = () => {};
-
 export const getDepInstalledVersion = (
   specifier: string,
+  dir?: string,
 ): string | undefined => {
   try {
     const packagePath = path.join(
-      process.cwd(),
+      dir ?? process.cwd(),
       `node_modules/${specifier}/package.json`,
     );
 
@@ -70,75 +99,74 @@ export const getDepInstalledVersion = (
   }
 };
 
-export const getDependencies = (file: string) => {
+export const getDependencies = (file: string, projects: Project[]) => {
   try {
     const json = JSON.parse(fs.readFileSync(file, 'utf8'));
-    return json.dependencies ?? {};
+    const dependencies = json.dependencies ?? {};
+
+    // remove local dependencies
+    return Object.keys(dependencies)
+      .filter(depName => !projects.find(project => project.name === depName))
+      .reduce<Record<string, string>>((deps, depName) => {
+        deps[depName] = dependencies[depName];
+        return deps;
+      }, {});
   } catch (err) {
     throw new RuntimeError(ErrorType.ParseJSONError, { file });
   }
 };
 
-export type PackageStatsResponse = {
-  assets: {
-    gzip: number;
-    name: string;
-    size: number;
-    type: string;
-  }[];
-  dependencyCount: number;
-  dependencySizes: {
-    approximateSize: number;
-    name: string;
-  }[];
-  description: string;
-  gzip: number;
-  hasJSModule: string;
-  hasJSNext: string;
-  hasSideEffects: string[];
-  name: string;
-  isModuleType: boolean;
-  repository: string;
-  scoped: boolean;
-  size: number;
-  version: string;
-};
+const memoize = <T>(fn: (...args: string[]) => Promise<T>) => {
+  const cached = new Map<string, T>();
 
-const requestPackageStats = async (specifier: string) => {
-  try {
-    const packageStats: PackageStatsResponse = await got(
-      `${BUNDLE_PHOBIA_API}?package=${specifier}&record=true`,
-      {
-        headers: {
-          'User-Agent': 'bundle-phobia-cli',
-          'X-Bundlephobia-User': 'bundle-phobia-cli',
-        },
-      },
-    ).json();
-    return packageStats;
-  } catch (err) {
-    if (err instanceof HTTPError) {
-      const { code, message } = JSON.parse(err.response.body as string).error;
-      throw new RuntimeError(ErrorType.RequestStatsError, {
-        specifier,
-        code,
-        message,
-      });
+  return async (...args: string[]) => {
+    const key = args.join('_');
+    if (!cached.has(key)) {
+      const res = await fn(...args);
+      cached.set(key, res);
+      return res;
     } else {
-      throw err;
+      return cached.get(key)!;
     }
-  }
+  };
 };
 
-export const requestStats = async (specifiers: string[]) => {
-  const limit = pLimit(6);
+const requestPackageStats = memoize<PackageStatsResponse>(
+  async (specifier: string) => {
+    try {
+      const packageStats: PackageStatsResponse = await got(
+        `${BUNDLE_PHOBIA_API}?package=${specifier}&record=true`,
+        {
+          headers: {
+            'User-Agent': 'bundle-phobia-cli',
+            'X-Bundlephobia-User': 'bundle-phobia-cli',
+          },
+        },
+      ).json();
+      return packageStats;
+    } catch (err) {
+      if (err instanceof HTTPError) {
+        const { code, message } = JSON.parse(err.response.body as string).error;
+        throw new RuntimeError(ErrorType.RequestStatsError, {
+          specifier,
+          code,
+          message,
+        });
+      } else {
+        throw err;
+      }
+    }
+  },
+);
 
-  return await Promise.all(
+export const requestStats = async (specifiers: string[]) =>
+  Promise.all(
     specifiers.map(specifier => limit(() => requestPackageStats(specifier))),
   );
-};
 
-export const findWorkspaceProjects = async (dir: string): Promise<string[]> => {
+export const findWorkspaceProjects = async (
+  dir: string,
+): Promise<Project[]> => {
   const packageManager = detectPackageManager(dir);
 
   let workspacePatterns: string[] = [];
@@ -148,25 +176,35 @@ export const findWorkspaceProjects = async (dir: string): Promise<string[]> => {
     packageManager === 'pnpm' &&
     fs.existsSync(path.join(dir, 'pnpm-workspace.yaml'))
   ) {
-    ({ packages: workspacePatterns } = yaml.load(
+    const yamlContent = yaml.load(
       fs.readFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'utf8'),
-    ) as { packages: string[] });
+    ) as { packages?: string[] };
+    workspacePatterns = yamlContent.packages ?? [];
   } else {
     const json = JSON.parse(
       fs.readFileSync(path.join(dir, 'package.json'), 'utf8'),
     );
 
-    ({ workspaces: workspacePatterns } = json);
+    workspacePatterns = json.workspaces ?? [];
   }
 
-  return workspacePatterns.length
+  return workspacePatterns?.length
     ? (
         await glob(workspacePatterns, {
           onlyDirectories: true,
           unique: true,
           absolute: true,
         })
-      ).filter(matched => fs.existsSync(path.join(matched, 'package.json')))
+      )
+        .filter(matched => fs.existsSync(path.join(matched, 'package.json')))
+        .map(directory => ({
+          name: (
+            JSON.parse(
+              fs.readFileSync(path.join(directory, 'package.json'), 'utf8'),
+            ) as { name?: string }
+          ).name,
+          path: directory,
+        }))
     : [];
 };
 

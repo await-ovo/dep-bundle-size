@@ -3,6 +3,7 @@ import os from 'os';
 import enquirer from 'enquirer';
 import { table } from 'table';
 import pLimit from 'p-limit';
+import ora from 'ora';
 import {
   findWorkspaceProjects,
   formatSize,
@@ -10,23 +11,38 @@ import {
   getDependencies,
   getDepInstalledVersion,
   getTimeFromSize,
+  logger,
   requestStats,
   RuntimeError,
 } from './utils';
 import { ErrorType } from './constants';
+import type { Project } from './utils';
 
 const { prompt } = enquirer;
 
 const doScan = async ({
-  projectDir,
+  project,
+  projects,
+  rootProjectDir,
   packageArgs,
   interactive,
 }: {
-  projectDir: string;
+  project: Project;
+  projects: Project[];
+  rootProjectDir: string;
   packageArgs?: string[];
   interactive?: boolean;
 }) => {
-  const deps = getDependencies(path.join(projectDir, 'package.json'));
+  const { path: projectDir } = project;
+  const relativeProjectPath = path.relative(rootProjectDir, projectDir);
+  const relativeName = relativeProjectPath === '' ? './' : relativeProjectPath;
+
+  const spinner = ora({
+    text: `Project ${relativeName} ...`,
+    color: 'yellow',
+  }).start();
+
+  const deps = getDependencies(path.join(projectDir, 'package.json'), projects);
 
   let packages = packageArgs?.length ? packageArgs : Object.keys(deps);
 
@@ -40,20 +56,26 @@ const doScan = async ({
   }
 
   if (!packages.length) {
-    throw new RuntimeError(ErrorType.NoPackagesError);
+    logger.warn(`No Packages to scan in project: ${projectDir}`);
+    spinner.fail();
+    return;
   }
 
   const stats = await requestStats(
     packages.map(
       packageName =>
         `${packageName}@${
-          getDepInstalledVersion(packageName) ?? deps[packageName] ?? 'latest'
+          getDepInstalledVersion(packageName, projectDir) ??
+          deps[packageName] ??
+          'latest'
         }`,
     ),
   );
 
+  spinner.text = `Project ${relativeName} completed:`;
+  spinner.succeed();
+
   /* eslint-disable no-console */
-  console.log(`Project ${projectDir} scan results:`);
   console.log(
     table(
       [
@@ -90,7 +112,12 @@ export const scan = async (
 
   const rootProjectDir = process.cwd();
 
-  const projects = [rootProjectDir];
+  const projects: Project[] = [
+    {
+      name: '.',
+      path: rootProjectDir,
+    },
+  ];
 
   if (options.recursive) {
     projects.push(...(await findWorkspaceProjects(rootProjectDir)));
@@ -99,10 +126,12 @@ export const scan = async (
   const limit = pLimit(os.cpus().length);
 
   await Promise.all(
-    projects.map(projectDir =>
+    projects.map(project =>
       limit(() =>
         doScan({
-          projectDir,
+          project,
+          rootProjectDir,
+          projects,
           packageArgs,
           interactive: options.interactive,
         }),

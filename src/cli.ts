@@ -8,10 +8,11 @@ import { version } from '../package.json';
 
 const errorHandler = (err: any) => {
   if (err instanceof RuntimeError) {
-    logger.error(ERROR_MESSAGES[err.errorType](err.options));
+    logger.error(ERROR_MESSAGES[err.errorType](err.options), '\n', err.stack);
   } else {
     logger.error('%o', err);
   }
+  process.exit(1);
 };
 
 process.on('unhandledRejection', errorHandler);
