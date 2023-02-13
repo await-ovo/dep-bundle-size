@@ -6,4 +6,5 @@ export default defineConfig({
   format: ['esm'],
   dts: true,
   target: 'esnext',
+  external: ['fast-glob'],
 });

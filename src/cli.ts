@@ -2,7 +2,20 @@
 import { cac } from 'cac';
 import { scan } from '.';
 import { add } from './add';
+import { logger, RuntimeError } from './utils';
+import { ERROR_MESSAGES } from './constants';
 import { version } from '../package.json';
+
+const errorHandler = (err: any) => {
+  if (err instanceof RuntimeError) {
+    logger.error(ERROR_MESSAGES[err.errorType](err.options));
+  } else {
+    logger.error('%o', err);
+  }
+};
+
+process.on('unhandledRejection', errorHandler);
+process.on('uncaughtException', errorHandler);
 
 const cli = cac('dep-bundle-size');
 
