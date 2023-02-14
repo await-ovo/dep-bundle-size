@@ -1,0 +1,8 @@
+{
+  "name": "pnpm-workspace",
+  "dependencies": {
+    "react-intl": "^6",
+    "react-i18next": "^12.1.5",
+    "eo-locale": "^7.4.2"
+  }
+}

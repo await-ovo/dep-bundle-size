@@ -118,11 +118,12 @@ export const add = async (
   packages: string[],
   options: {
     warning?: boolean;
+    dir?: string;
   },
 ) => {
   const checkSpinner = spinner();
   checkSpinner.start('Checking constraints');
-  const rootProjectDir = findRootDirectory(process.cwd());
+  const rootProjectDir = findRootDirectory(options.dir ?? process.cwd());
   const config = await getConfig(rootProjectDir);
 
   const stats = await requestStats(packages);

@@ -104,13 +104,18 @@ const doScan = async ({
 
 export const scan = async (
   packageArgs: string[],
-  options: { interactive?: boolean; recursive?: boolean },
+  options: {
+    interactive?: boolean;
+    recursive?: boolean;
+    dir?: string;
+    workspaceConcurrency?: number;
+  },
 ) => {
   if (options.recursive && options.interactive) {
     throw new RuntimeError(ErrorType.RecursiveWithInteractiveError);
   }
 
-  const rootProjectDir = findRootDirectory(process.cwd());
+  const rootProjectDir = findRootDirectory(options.dir ?? process.cwd());
 
   const projects: Project[] = [
     {
@@ -123,7 +128,7 @@ export const scan = async (
     projects.push(...(await findWorkspaceProjects(rootProjectDir)));
   }
 
-  const limit = pLimit(os.cpus().length);
+  const limit = pLimit(options.workspaceConcurrency ?? os.cpus().length);
 
   await Promise.all(
     projects.map(project =>

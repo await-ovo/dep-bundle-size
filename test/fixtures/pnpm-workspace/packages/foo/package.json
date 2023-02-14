@@ -1,0 +1,13 @@
+{
+  "name": "@pkg/foo",
+  "version": "0.0.1",
+  "dependencies": {
+    "lodash": "4.17.21",
+    "axios": "~0.27.0",
+    "axios-ntlm": "1.3.0",
+    "react-dropzone": "^7.0.1",
+    "react-flip-move": "^3.0.4",
+    "react-sidebar": "^3.0.2",
+    "@pkg/bar": "workspace:*"
+  }
+}

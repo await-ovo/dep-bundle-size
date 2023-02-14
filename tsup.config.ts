@@ -4,6 +4,6 @@ export default defineConfig({
   clean: true,
   entry: ['./src/cli.ts'],
   format: ['esm'],
-  dts: true,
+  dts: false,
   target: 'esnext',
 });

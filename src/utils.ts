@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import util from 'node:util';
 import os from 'node:os';
+import { createRequire } from 'node:module';
 import { got, HTTPError } from 'got';
 import pLimit from 'p-limit';
 import yaml from 'js-yaml';
@@ -89,7 +90,7 @@ const memoize = <T>(fn: (...args: string[]) => Promise<T>) => {
   };
 };
 
-const readJSON = memoize(async file => {
+export const readJSON = memoize(async file => {
   try {
     return JSON.parse(await fs.promises.readFile(file, 'utf8'));
   } catch (err) {
@@ -140,13 +141,22 @@ export const detectPackageManager = (dir: string): PackageManager => {
 
 export const getDepInstalledVersion = (
   specifier: string,
-  dir?: string,
+  dir: string,
 ): string | undefined => {
   try {
-    const packagePath = path.join(
-      dir ?? process.cwd(),
-      `node_modules/${specifier}/package.json`,
-    );
+    let packagePath = path.join(dir, `node_modules/${specifier}/package.json`);
+
+    if (!fs.existsSync(packagePath)) {
+      const require = createRequire(dir);
+      const resolved = require.resolve(specifier);
+      packagePath = path.join(
+        resolved.substring(
+          0,
+          resolved.lastIndexOf(`node_modules/${specifier}`),
+        ),
+        `node_modules/${specifier}/package.json`,
+      );
+    }
 
     return JSON.parse(fs.readFileSync(packagePath, 'utf8')).version;
   } catch (err) {

@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run --coverage",
     "postinstall": "pnpm simple-git-hooks"
   },
   "keywords": [],
@@ -36,6 +36,7 @@
     "@types/node": "^18.13.0",
     "@typescript-eslint/eslint-plugin": "^5.40.1",
     "@typescript-eslint/parser": "^5.40.1",
+    "@vitest/coverage-c8": "^0.28.5",
     "eslint": "^8.25.0",
     "eslint-import-resolver-typescript": "^3.5.1",
     "eslint-plugin-eslint-comments": "^3.2.0",

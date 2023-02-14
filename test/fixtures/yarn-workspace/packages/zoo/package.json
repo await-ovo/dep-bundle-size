@@ -1,0 +1,7 @@
+{
+  "name": "@pkg/zoo",
+  "version": "0.0.1",
+  "dependencie": {
+    "use-intl": "^2.10.2"
+  }
+}

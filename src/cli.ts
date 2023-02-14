@@ -27,12 +27,13 @@ cli
   .command('[...packages]')
   .option('-i, --interactive', 'Select packages to scan')
   .option('-r, --recursive', 'Select packages to scan')
+  .option('-d, --dir [dir]', 'working directory')
   .action(scan);
 
 cli
   .command('add <...packages>')
-  .option('-i, --interactive', 'should report interactiveliy')
   .option('-w, --warning', 'use warning instead error')
+  .option('-d, --dir [dir]', 'working directory')
   .action(add);
 
 cli.parse();
