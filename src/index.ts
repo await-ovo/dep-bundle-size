@@ -1,10 +1,11 @@
 import path from 'node:path';
 import os from 'os';
-import enquirer from 'enquirer';
+import { multiselect, spinner } from '@clack/prompts';
 import { table } from 'table';
 import pLimit from 'p-limit';
-import ora from 'ora';
+import { bold } from 'kolorist';
 import {
+  findRootDirectory,
   findWorkspaceProjects,
   formatSize,
   formatTime,
@@ -17,8 +18,6 @@ import {
 } from './utils';
 import { ErrorType } from './constants';
 import type { Project } from './utils';
-
-const { prompt } = enquirer;
 
 const doScan = async ({
   project,
@@ -36,28 +35,29 @@ const doScan = async ({
   const { path: projectDir } = project;
   const relativeProjectPath = path.relative(rootProjectDir, projectDir);
   const relativeName = relativeProjectPath === '' ? './' : relativeProjectPath;
+  const scanSpinner = spinner();
 
-  const spinner = ora({
-    text: `Project ${relativeName} ...`,
-    color: 'yellow',
-  }).start();
-
-  const deps = getDependencies(path.join(projectDir, 'package.json'), projects);
+  const deps = await getDependencies(
+    path.join(projectDir, 'package.json'),
+    projects,
+  );
 
   let packages = packageArgs?.length ? packageArgs : Object.keys(deps);
 
   if (interactive) {
-    ({ packages } = await prompt({
-      type: 'multiselect',
-      name: 'packages',
-      message: 'Select packages to scan?',
-      choices: packages,
-    }));
+    packages = (await multiselect({
+      message: 'Select packages to scan.',
+      options: packages.map(packageName => ({
+        value: packageName,
+      })),
+    })) as string[];
   }
 
+  scanSpinner.start(`Scan ${bold(relativeName)} start`);
+
   if (!packages.length) {
-    logger.warn(`No Packages to scan in project: ${projectDir}`);
-    spinner.fail();
+    logger.warn(`No Packages to scan in project: ${bold(projectDir)}`);
+    scanSpinner.stop(`Skip ${bold(relativeName)}`);
     return;
   }
 
@@ -72,8 +72,7 @@ const doScan = async ({
     ),
   );
 
-  spinner.text = `Project ${relativeName} completed:`;
-  spinner.succeed();
+  scanSpinner.stop(`Scan ${bold(relativeName)} completed`);
 
   /* eslint-disable no-console */
   console.log(
@@ -98,6 +97,7 @@ const doScan = async ({
         },
       },
     ),
+    '\n',
   );
   /* eslint-enable no-console */
 };
@@ -110,7 +110,7 @@ export const scan = async (
     throw new RuntimeError(ErrorType.RecursiveWithInteractiveError);
   }
 
-  const rootProjectDir = process.cwd();
+  const rootProjectDir = findRootDirectory(process.cwd());
 
   const projects: Project[] = [
     {

@@ -4,10 +4,14 @@
   "description": "",
   "main": "index.js",
   "bin": "./dist/cli.mjs",
+  "files": [
+    "./dist"
+  ],
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "pnpm simple-git-hooks"
   },
   "keywords": [],
   "author": "",
@@ -16,17 +20,18 @@
     "node": ">=16"
   },
   "dependencies": {
+    "@clack/prompts": "^0.2.0",
     "cac": "^6.7.14",
-    "enquirer": "^2.3.6",
     "fast-glob": "^3.2.12",
     "got": "^12.5.3",
     "js-yaml": "^4.1.0",
     "kolorist": "^1.7.0",
-    "ora": "^6.1.2",
     "p-limit": "^4.0.0",
     "table": "^6.8.1"
   },
   "devDependencies": {
+    "@commitlint/cli": "^17.4.3",
+    "@commitlint/config-conventional": "^17.4.3",
     "@types/js-yaml": "^4.0.5",
     "@types/node": "^18.13.0",
     "@typescript-eslint/eslint-plugin": "^5.40.1",
@@ -40,8 +45,24 @@
     "eslint-plugin-promise": "^6.1.0",
     "eslint-plugin-react": "^7.31.10",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "lint-staged": "^13.1.2",
     "prettier": "^2.7.1",
+    "simple-git-hooks": "^2.8.1",
     "tsup": "^6.6.0",
-    "typescript": "^4.9.5"
+    "typescript": "^4.9.5",
+    "vitest": "^0.28.5"
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix --color --cache --quiet"
+    ]
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged"
   }
 }

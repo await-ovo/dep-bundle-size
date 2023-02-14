@@ -1,16 +1,26 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import util from 'node:util';
+import os from 'node:os';
 import { got, HTTPError } from 'got';
 import pLimit from 'p-limit';
 import yaml from 'js-yaml';
 import glob from 'fast-glob';
-import { BUNDLE_PHOBIA_API, ErrorType, NPM_REGISTRY } from './constants';
+import { cyan, yellow, red } from 'kolorist';
+import { BUNDLE_PHOBIA_API, ErrorType } from './constants';
 
 const limit = pLimit(6);
 
 export type Project = {
   name?: string;
   path: string;
+};
+
+export type BundlephobiaConfig = {
+  maxSize?: number;
+  maxGzipSize?: number;
+  maxOverallSize?: number;
+  maxOverallGzipSize?: number;
 };
 
 export type PackageStatsResponse = {
@@ -38,25 +48,22 @@ export type PackageStatsResponse = {
   version: string;
 };
 
+/* eslint-disable no-console */
 export const logger = {
   log: (...args: any[]) => {
-    process.stdout.write('\nINFO: ');
-    // eslint-disable-next-line no-console
-    console.log('[INFO]: ', ...args);
+    console.log(cyan('Info: '), util.format(...args));
+    console.log('\n');
   },
-
   error: (...args: any[]) => {
-    process.stderr.write('\nERROR: ');
-    // eslint-disable-next-line no-console
-    console.error(...args);
+    console.error(red('Error: '), util.format(...args));
+    console.log('\n');
   },
   warn: (...args: any[]) => {
-    process.stdout.write('\nWARN: ');
-    // eslint-disable-next-line no-console
-    console.warn(...args);
+    console.log(yellow('Warn: '), util.format(...args));
+    console.log('\n');
   },
 };
-
+/* eslint-enable no-console */
 export class RuntimeError extends Error {
   errorType: ErrorType;
   options?: any;
@@ -67,9 +74,60 @@ export class RuntimeError extends Error {
   }
 }
 
+const memoize = <T>(fn: (...args: string[]) => Promise<T>) => {
+  const cached = new Map<string, T>();
+
+  return async (...args: string[]) => {
+    const key = args.join('_');
+    if (!cached.has(key)) {
+      const res = await fn(...args);
+      cached.set(key, res);
+      return res;
+    } else {
+      return cached.get(key)!;
+    }
+  };
+};
+
+const readJSON = memoize(async file => {
+  try {
+    return JSON.parse(await fs.promises.readFile(file, 'utf8'));
+  } catch (err) {
+    throw new RuntimeError(ErrorType.ParseJSONError, { file });
+  }
+});
+
+export const findRootDirectory = (dir: string): string => {
+  if (dir === os.homedir()) {
+    return process.cwd();
+  }
+  if (
+    fs.existsSync(path.join(dir, 'pnpm-lock.yaml')) ||
+    fs.existsSync(path.join(dir, 'pnpm-workspace.yaml')) ||
+    fs.existsSync(path.join(dir, 'package-lock.json')) ||
+    fs.existsSync(path.join(dir, 'yarn.lock'))
+  ) {
+    return dir;
+  } else {
+    return findRootDirectory(path.dirname(dir));
+  }
+};
+
+export const getConfig = async (dir: string): Promise<BundlephobiaConfig> => {
+  const { 'bundle-phobia': config = {} } = await readJSON(
+    path.join(dir, 'package.json'),
+  );
+  return {
+    maxSize: config['max-size'],
+    maxGzipSize: config['max-gzip-size'],
+    maxOverallSize: config['max-overall-size'],
+    maxOverallGzipSize: config['max-overall-gzip-size'],
+  };
+};
+
 export type PackageManager = 'pnpm' | 'yarn' | 'npm';
 
-export const detectPackageManager = (dir: string) => {
+export const detectPackageManager = (dir: string): PackageManager => {
   if (fs.existsSync(path.join(dir, 'pnpm-lock.yaml'))) {
     return 'pnpm';
   } else if (fs.existsSync(path.join(dir, 'package-lock.json'))) {
@@ -77,7 +135,6 @@ export const detectPackageManager = (dir: string) => {
   } else if (fs.existsSync(path.join(dir, 'yarn.lock'))) {
     return 'yarn';
   }
-
   return 'npm';
 };
 
@@ -99,36 +156,17 @@ export const getDepInstalledVersion = (
   }
 };
 
-export const getDependencies = (file: string, projects: Project[]) => {
-  try {
-    const json = JSON.parse(fs.readFileSync(file, 'utf8'));
-    const dependencies = json.dependencies ?? {};
+export const getDependencies = async (file: string, projects: Project[]) => {
+  const json = await readJSON(file);
+  const dependencies = json.dependencies ?? {};
 
-    // remove local dependencies
-    return Object.keys(dependencies)
-      .filter(depName => !projects.find(project => project.name === depName))
-      .reduce<Record<string, string>>((deps, depName) => {
-        deps[depName] = dependencies[depName];
-        return deps;
-      }, {});
-  } catch (err) {
-    throw new RuntimeError(ErrorType.ParseJSONError, { file });
-  }
-};
-
-const memoize = <T>(fn: (...args: string[]) => Promise<T>) => {
-  const cached = new Map<string, T>();
-
-  return async (...args: string[]) => {
-    const key = args.join('_');
-    if (!cached.has(key)) {
-      const res = await fn(...args);
-      cached.set(key, res);
-      return res;
-    } else {
-      return cached.get(key)!;
-    }
-  };
+  // remove local dependencies
+  return Object.keys(dependencies)
+    .filter(depName => !projects.find(project => project.name === depName))
+    .reduce<Record<string, string>>((deps, depName) => {
+      deps[depName] = dependencies[depName];
+      return deps;
+    }, {});
 };
 
 const requestPackageStats = memoize<PackageStatsResponse>(
@@ -181,10 +219,7 @@ export const findWorkspaceProjects = async (
     ) as { packages?: string[] };
     workspacePatterns = yamlContent.packages ?? [];
   } else {
-    const json = JSON.parse(
-      fs.readFileSync(path.join(dir, 'package.json'), 'utf8'),
-    );
-
+    const json = await readJSON(path.join(dir, 'package.json'));
     workspacePatterns = json.workspaces ?? [];
   }
 
@@ -194,6 +229,7 @@ export const findWorkspaceProjects = async (
           onlyDirectories: true,
           unique: true,
           absolute: true,
+          cwd: dir,
         })
       )
         .filter(matched => fs.existsSync(path.join(matched, 'package.json')))
