@@ -34,7 +34,7 @@ test('find root package directory', () => {
 
 test('get bundlephoia config', async () => {
   expect(await getConfig(path.join(fixtures, 'base-project'))).toEqual({
-    maxSize: 100000,
+    maxSize: 10,
   });
 });
 
