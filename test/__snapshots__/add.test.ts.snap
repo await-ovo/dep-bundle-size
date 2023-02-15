@@ -1,0 +1,12 @@
+// Vitest Snapshot v1
+
+exports[`should add dependency in monorepo package successfully 1`] = `
+"Info:  Add deps(pnpm add styled-components@5.3.6 )
+"
+`;
+
+exports[`should ignore exceeding size error 1`] = `
+"Warn:  Can not install styled-components@5.3.6(33.39kB), Since their max-size is larger than the configured(10.00B).
+Info:  Add deps(npm install styled-components@5.3.6 )
+"
+`;

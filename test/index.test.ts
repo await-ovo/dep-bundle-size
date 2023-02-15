@@ -1,25 +1,9 @@
 import path from 'node:path';
-import { expect, test, vi } from 'vitest';
+import { expect, test } from 'vitest';
+import { createConsoleMock } from './utils';
 import { scan } from '../src';
 
 const fixtures = path.join(process.cwd(), 'test/fixtures');
-
-const createConsoleMock = () => {
-  let output = '';
-  return {
-    startMock: () => {
-      vi.stubGlobal('console', {
-        log: vi.fn((...args: any[]) => (output += args.join(' '))),
-        error: vi.fn((...args: any[]) => (output += args.join(' '))),
-        warn: vi.fn((...args: any[]) => (output += args.join(' '))),
-      });
-    },
-    stopMock: () => {
-      vi.unstubAllGlobals();
-    },
-    getOutput: () => output,
-  };
-};
 
 test('auto scan deps in single project', async () => {
   const { getOutput, startMock, stopMock } = createConsoleMock();

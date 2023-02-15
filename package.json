@@ -1,7 +1,7 @@
 {
   "name": "dep-bundle-size",
   "version": "1.0.0",
-  "description": "",
+  "description": "Yet another bundle-phobia CLI client",
   "main": "index.js",
   "bin": "./dist/cli.mjs",
   "files": [
@@ -10,8 +10,9 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
+    "prepare-fixtures": "cd test/fixtures/base-project && npm install && cd ../pnpm-workspace && pnpm install && cd ../yarn-workspace && yarn install",
     "test": "vitest run --coverage",
-    "postinstall": "pnpm simple-git-hooks"
+    "postinstall": "pnpm simple-git-hooks && pnpm run prepare-fixtures"
   },
   "keywords": [],
   "author": "",

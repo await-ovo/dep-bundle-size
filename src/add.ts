@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import { spinner } from '@clack/prompts';
+import { bold } from 'kolorist';
 import {
   detectPackageManager,
   findRootDirectory,
@@ -29,12 +30,12 @@ const checkConstraints = ({
     const exceeded = stats.filter(({ size }) => size > limit);
 
     const hint = `Can not install ${exceeded
-      .map(
-        ({ name, version, size }) => `${name}@${version}(${formatSize(size)})`,
+      .map(({ name, version, size }) =>
+        bold(`${name}@${version}(${formatSize(size)})`),
       )
       .join(',')}, Since their ${
       constraint.name
-    } is larger than the configured(${formatSize(limit)}).`;
+    } is larger than the configured(${bold(formatSize(limit))}).`;
     if (warning) {
       logger.warn(hint);
     } else {
@@ -59,13 +60,11 @@ const checkConstraints = ({
 
   if (config.maxOverallSize && overallSize > config.maxOverallSize) {
     const hint = `Can not install ${stats
-      .map(
-        ({ name, version, size }) => `${name}@${version}(${formatSize(size)})`,
+      .map(({ name, version, size }) =>
+        bold(`${name}@${version}(${formatSize(size)})`),
       )
-      .join(
-        ',',
-      )}, Since their total size is larger than the configured(${formatSize(
-      config.maxOverallSize,
+      .join(',')}, Since their total size is larger than the configured(${bold(
+      formatSize(config.maxOverallSize),
     )}).`;
 
     if (warning) {
@@ -78,12 +77,11 @@ const checkConstraints = ({
   if (config.maxGzipSize && overallGzipSize > config.maxGzipSize) {
     const hint = `Can not install ${stats
       .map(
-        ({ name, version, gzip }) => `${name}@${version}(${formatSize(gzip)})`,
+        ({ name, version, gzip }) =>
+          `${name}@${version}(${bold(formatSize(gzip))})`,
       )
-      .join(
-        ',',
-      )}, Since their total size is larger than the configured(${formatSize(
-      config.maxGzipSize,
+      .join(',')}, Since their total size is larger than the configured(${bold(
+      formatSize(config.maxGzipSize),
     )}).`;
     if (warning) {
       logger.warn(hint);
@@ -97,21 +95,27 @@ const doAdd = async ({
   packages,
   cwd,
   rootProjectDir,
+  dryRun,
 }: {
   packages: string[];
   cwd: string;
   rootProjectDir: string;
+  dryRun?: boolean;
 }) => {
   const packageManager = detectPackageManager(rootProjectDir);
 
-  spawn(
+  const args = [
     packageManager,
-    [packageManager === 'npm' ? 'install' : 'add', ...packages],
-    {
+    packageManager === 'npm' ? 'install' : 'add',
+    ...packages,
+  ];
+  logger.log(`Add deps(${bold(args.join(' '))})`);
+  if (!dryRun) {
+    spawn(args[0], args.slice(1), {
       cwd,
       stdio: 'inherit',
-    },
-  );
+    });
+  }
 };
 
 export const add = async (
@@ -119,6 +123,7 @@ export const add = async (
   options: {
     warning?: boolean;
     dir?: string;
+    dryRun?: boolean;
   },
 ) => {
   const checkSpinner = spinner();
@@ -142,7 +147,8 @@ export const add = async (
 
   await doAdd({
     packages,
-    cwd: process.cwd(),
+    cwd: options.dir ?? process.cwd(),
     rootProjectDir,
+    dryRun: options.dryRun,
   });
 };
