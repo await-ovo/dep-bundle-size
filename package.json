@@ -1,11 +1,13 @@
 {
   "name": "dep-bundle-size",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Yet another CLI client for BundlePhobia",
   "keywords": [
     "BundlePhobia CLI",
     "bundle size",
-    "dep cost"
+    "dependency cost",
+    "dependency bundle size",
+    "dependency time cost"
   ],
   "main": "index.js",
   "bin": "./dist/cli.mjs",
@@ -19,7 +21,6 @@
     "test": "vitest run --coverage",
     "prepare-repo": "pnpm simple-git-hooks && sh ./test/utils/prepare-fixtures.sh"
   },
-  "license": "ISC",
   "engines": {
     "node": ">=16"
   },

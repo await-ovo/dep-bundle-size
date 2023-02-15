@@ -10,7 +10,7 @@
 <a href='https://npmjs.com/package/dep-bundle-size'>
 <img src='https://img.shields.io/npm/l/dep-bundle-size' >
 </a>
-<img src="./assets/pnpm-dlx.png" alt="pnpm dlx dep-bundle-size@latest -r">
+<img src="https://raw.githubusercontent.com/await-ovo/dep-bundle-size/main/assets/pnpm-dlx.png?token=GHSAT0AAAAAABRRY4JYJGRTLBDW2UBNLLOUY7MUU2Q" alt="pnpm dlx dep-bundle-size@latest -r">
 </p>
 
 
