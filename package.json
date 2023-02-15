@@ -1,21 +1,24 @@
 {
   "name": "dep-bundle-size",
-  "version": "1.0.0",
-  "description": "Yet another bundle-phobia CLI client",
+  "version": "0.1.2",
+  "description": "Yet another CLI client for BundlePhobia",
+  "keywords": [
+    "BundlePhobia CLI",
+    "bundle size",
+    "dep cost"
+  ],
   "main": "index.js",
   "bin": "./dist/cli.mjs",
   "files": [
     "./dist"
   ],
   "scripts": {
+    "prepublishOnly": "pnpm run build",
     "dev": "tsup --watch",
     "build": "tsup",
-    "prepare-fixtures": "cd test/fixtures/base-project && npm ci && cd ../pnpm-workspace && pnpm install --frozen-lockfile && cd ../yarn-workspace && yarn install --frozen-lockfile",
     "test": "vitest run --coverage",
-    "postinstall": "pnpm simple-git-hooks && pnpm run prepare-fixtures"
+    "prepare-repo": "pnpm simple-git-hooks && sh ./test/utils/prepare-fixtures.sh"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
   "engines": {
     "node": ">=16"

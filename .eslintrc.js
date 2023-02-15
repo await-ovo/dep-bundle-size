@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 module.exports = {
   root: true,
   ignorePatterns: ['**/node_modules/**', '**/dist/**'],
@@ -352,3 +353,4 @@ module.exports = {
     },
   ],
 };
+/* eslint-enable max-lines */

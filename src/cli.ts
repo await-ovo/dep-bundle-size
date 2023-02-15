@@ -26,14 +26,14 @@ cli.version(version);
 cli
   .command('[...packages]')
   .option('-i, --interactive', 'Select packages to scan')
-  .option('-r, --recursive', 'Select packages to scan')
-  .option('-d, --dir [dir]', 'working directory')
+  .option('-r, --recursive', 'Scan packages in every project of monorepo')
+  .option('-d, --dir [dir]', 'Specify project root directory')
   .action(scan);
 
 cli
   .command('add <...packages>')
-  .option('-w, --warning', 'use warning instead error')
-  .option('-d, --dir [dir]', 'working directory')
+  .option('-w, --warning', 'Use warning instead throw an error if ')
+  .option('-d, --dir [dir]', 'Specify project root directory')
   .action(add);
 
 cli.parse();
