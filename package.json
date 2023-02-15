@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup",
-    "prepare-fixtures": "cd test/fixtures/base-project && npm install && cd ../pnpm-workspace && pnpm install && cd ../yarn-workspace && yarn install",
+    "prepare-fixtures": "cd test/fixtures/base-project && npm ci && cd ../pnpm-workspace && pnpm install --frozen-lockfile && cd ../yarn-workspace && yarn install --frozen-lockfile",
     "test": "vitest run --coverage",
     "postinstall": "pnpm simple-git-hooks && pnpm run prepare-fixtures"
   },
